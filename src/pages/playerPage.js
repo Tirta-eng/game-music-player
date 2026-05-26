@@ -1,23 +1,21 @@
-// 🎮 Music Player Page — Neon Arcade Ocean + Fish Catch Game
+// 🎮 Music Player Page — Split View: Player + Fish Catch Game
 
 import { getState, setState, resetQuiz, resetPlayer, loadSongsFromManifest } from '../state.js';
 import { sfxClick, sfxVictory, sfxNavigate } from '../sfx.js';
 import { navigate } from '../router.js';
 import * as audio from '../audio.js';
 import { createVisualizer, startVisualizer, stopVisualizer, resizeVisualizer } from '../components/visualizer.js';
-import { createFishGame, startFishGame, stopFishGame, destroyFishGame, resetGameScore } from '../components/fishGame.js';
+import { createFishGame, startFishGame, stopFishGame, destroyFishGame } from '../components/fishGame.js';
 
 const CONGRATS_MESSAGES = [
   '🧠 Selamat! IQ anda setara Albert Einstein!',
-  '🎓 Profesor musik terdeteksi! Gelar S3 langsung approved!',
-  '🏆 Otak kamu encer banget, kayak air laut! 🌊',
-  '🎵 Spotify mau hire kamu jadi CEO sekarang!',
-  '🔥 Kamu terlalu pintar, kasihan soalnya jadi gampang!',
-  '👑 Raja/Ratu musik telah tiba! Semua harus tunduk!',
-  '🚀 NASA mau rekrut kamu, tapi kamu terlalu overqualified!',
-  '💎 Otak kamu lebih mahal dari berlian... mungkin.',
-  '🐠 Ikan-ikan di laut aja kagum sama kamu!',
-  '🌊 Kamu bisa jadi dewa Poseidon versi musik!',
+  '🎓 Profesor musik terdeteksi!',
+  '🏆 Otak kamu encer banget! 🌊',
+  '🎵 Spotify mau hire kamu jadi CEO!',
+  '🔥 Kamu terlalu pintar!',
+  '👑 Raja/Ratu musik telah tiba!',
+  '🐠 Ikan-ikan aja kagum sama kamu!',
+  '🌊 Poseidon versi musik!',
 ];
 
 function pickRandom(arr) {
@@ -49,9 +47,8 @@ export async function renderPlayerPage(container) {
   const congrats = pickRandom(CONGRATS_MESSAGES);
   const currentSong = state.songs[state.currentSongIndex];
 
-  // ── Build the new layout ──────────────────────────────────────────
   container.innerHTML = `
-    <div class="arcade-player">
+    <div class="split-player">
 
       <!-- Congrats Toast -->
       <div class="ap-toast" id="congratsToast">
@@ -60,62 +57,72 @@ export async function renderPlayerPage(container) {
         <button class="ap-toast-close" id="toastClose">✕</button>
       </div>
 
-      <!-- Game Area (Fish Catch) -->
-      <div class="ap-game-area" id="gameArea"></div>
+      <!-- LEFT: Music Player -->
+      <div class="sp-player-side">
+        <div class="sp-player-inner">
 
-      <!-- Player Bar (Bottom) -->
-      <div class="ap-player-bar">
-
-        <!-- Visualizer strip -->
-        <div class="ap-viz-strip" id="vizStrip"></div>
-
-        <!-- Now Playing Info -->
-        <div class="ap-now-playing">
-          <div class="ap-song-info">
-            <div class="ap-song-title" id="songTitle">${currentSong.title}</div>
-            <div class="ap-song-artist" id="songArtist">${currentSong.artist}</div>
-          </div>
-        </div>
-
-        <!-- Progress Bar -->
-        <div class="ap-progress">
-          <span class="ap-time" id="currentTime">0:00</span>
-          <div class="ap-progress-track" id="progressBar">
-            <div class="ap-progress-fill" id="progressFill"></div>
-            <div class="ap-progress-thumb" id="progressThumb"></div>
-          </div>
-          <span class="ap-time" id="totalTime">0:00</span>
-        </div>
-
-        <!-- Controls -->
-        <div class="ap-controls">
-          <div class="ap-controls-left">
-            <button class="ap-btn" id="btnShuffle" title="Acak">🔀</button>
-            <button class="ap-btn" id="btnPrev" title="Sebelumnya">⏮</button>
-            <button class="ap-btn ap-btn-play" id="playBtn" title="Putar">▶</button>
-            <button class="ap-btn" id="btnNext" title="Selanjutnya">⏭</button>
-            <button class="ap-btn" id="btnRepeat" title="Ulangi">🔁</button>
+          <!-- Header -->
+          <div class="sp-header">
+            <button class="sp-back-btn" id="btnRestart" title="Kembali">← KEMBALI</button>
           </div>
 
-          <div class="ap-controls-right">
-            <button class="ap-btn" id="volumeIcon">${getVolumeIcon(state.volume)}</button>
-            <input type="range" class="ap-volume-slider" id="volumeSlider"
+          <!-- Album Art / Visualizer -->
+          <div class="sp-album-area">
+            <div class="sp-disc" id="spDisc">
+              <div class="sp-disc-inner">
+                <span class="sp-disc-emoji">🎵</span>
+              </div>
+              <div class="sp-disc-ring"></div>
+              <div class="sp-disc-ring sp-disc-ring-2"></div>
+            </div>
+          </div>
+
+          <!-- Song Info -->
+          <div class="sp-song-info">
+            <div class="sp-song-title" id="songTitle">${currentSong.title}</div>
+            <div class="sp-song-artist" id="songArtist">${currentSong.artist}</div>
+          </div>
+
+          <!-- Visualizer -->
+          <div class="sp-visualizer" id="vizSlot"></div>
+
+          <!-- Progress -->
+          <div class="sp-progress">
+            <span class="sp-time" id="currentTime">0:00</span>
+            <div class="sp-progress-track" id="progressBar">
+              <div class="sp-progress-fill" id="progressFill"></div>
+              <div class="sp-progress-thumb" id="progressThumb"></div>
+            </div>
+            <span class="sp-time" id="totalTime">0:00</span>
+          </div>
+
+          <!-- Controls -->
+          <div class="sp-controls">
+            <button class="sp-btn" id="btnShuffle" title="Acak">🔀</button>
+            <button class="sp-btn" id="btnPrev" title="Sebelumnya">⏮</button>
+            <button class="sp-btn sp-btn-play" id="playBtn" title="Putar">▶</button>
+            <button class="sp-btn" id="btnNext" title="Selanjutnya">⏭</button>
+            <button class="sp-btn" id="btnRepeat" title="Ulangi">🔁</button>
+          </div>
+
+          <!-- Volume -->
+          <div class="sp-volume">
+            <button class="sp-btn sp-vol-icon" id="volumeIcon">${getVolumeIcon(state.volume)}</button>
+            <input type="range" class="sp-volume-slider" id="volumeSlider"
                    min="0" max="1" step="0.01" value="${state.volume}">
-            <button class="ap-btn ap-btn-playlist" id="btnPlaylist" title="Playlist">📜</button>
-            <button class="ap-btn ap-btn-back" id="btnRestart" title="Kembali">🏠</button>
           </div>
+
+          <!-- Playlist -->
+          <div class="sp-playlist-section">
+            <div class="sp-playlist-title">📜 PLAYLIST</div>
+            <div class="sp-playlist-list" id="playlistList"></div>
+          </div>
+
         </div>
       </div>
 
-      <!-- Playlist Drawer -->
-      <div class="ap-playlist-drawer" id="playlistDrawer">
-        <div class="ap-playlist-header">
-          <h3>📜 PLAYLIST</h3>
-          <button class="ap-playlist-close" id="playlistClose">✕</button>
-        </div>
-        <div class="ap-playlist-list" id="playlistList"></div>
-      </div>
-      <div class="ap-playlist-overlay" id="playlistOverlay"></div>
+      <!-- RIGHT: Fish Catch Game -->
+      <div class="sp-game-side" id="gameArea"></div>
 
     </div>
   `;
@@ -136,8 +143,7 @@ export async function renderPlayerPage(container) {
   const volumeSlider   = container.querySelector('#volumeSlider');
   const volumeIcon     = container.querySelector('#volumeIcon');
   const playlistList   = container.querySelector('#playlistList');
-  const playlistDrawer = container.querySelector('#playlistDrawer');
-  const playlistOverlay = container.querySelector('#playlistOverlay');
+  const spDisc         = container.querySelector('#spDisc');
 
   // ── Inject Fish Game ────────────────────────────────────────────
   const gameArea = container.querySelector('#gameArea');
@@ -145,17 +151,17 @@ export async function renderPlayerPage(container) {
   startFishGame();
 
   // ── Inject Visualizer ───────────────────────────────────────────
-  const vizStrip = container.querySelector('#vizStrip');
-  vizStrip.appendChild(createVisualizer());
+  const vizSlot = container.querySelector('#vizSlot');
+  vizSlot.appendChild(createVisualizer());
 
-  // ── Congrats Toast auto-dismiss ─────────────────────────────────
+  // ── Congrats toast ──────────────────────────────────────────────
   const toast = container.querySelector('#congratsToast');
   const toastTimer = setTimeout(() => {
     if (toast) {
       toast.classList.add('ap-toast-hide');
       setTimeout(() => toast.style.display = 'none', 400);
     }
-  }, 5000);
+  }, 4000);
 
   container.querySelector('#toastClose').addEventListener('click', () => {
     sfxClick();
@@ -164,58 +170,37 @@ export async function renderPlayerPage(container) {
     setTimeout(() => toast.style.display = 'none', 300);
   }, { signal });
 
-  // ── Playlist rendering ──────────────────────────────────────────
+  // ── Playlist ────────────────────────────────────────────────────
   function renderPlaylist() {
     const s = getState();
     playlistList.innerHTML = '';
     s.songs.forEach((song, i) => {
       const isActive = i === s.currentSongIndex;
       const item = document.createElement('div');
-      item.className = `ap-playlist-item${isActive ? ' active' : ''}`;
+      item.className = `sp-pl-item${isActive ? ' active' : ''}`;
       item.innerHTML = `
-        <span class="ap-pl-num">${String(i + 1).padStart(2, '0')}</span>
-        <div class="ap-pl-info">
-          <span class="ap-pl-title">${song.title}</span>
-          <span class="ap-pl-artist">${song.artist}</span>
+        <span class="sp-pl-num">${String(i + 1).padStart(2, '0')}</span>
+        <div class="sp-pl-info">
+          <span class="sp-pl-name">${song.title}</span>
+          <span class="sp-pl-artist">${song.artist}</span>
         </div>
-        ${isActive ? '<span class="ap-pl-eq">♫</span>' : ''}
+        ${isActive ? '<span class="sp-pl-playing">♫</span>' : ''}
       `;
       item.addEventListener('click', () => {
         sfxClick();
         loadAndPlay(i);
-        closePlaylist();
       }, { signal });
       playlistList.appendChild(item);
     });
   }
 
-  // ── Playlist drawer toggle ──────────────────────────────────────
-  function openPlaylist() {
-    playlistDrawer.classList.add('open');
-    playlistOverlay.classList.add('open');
-  }
-  function closePlaylist() {
-    playlistDrawer.classList.remove('open');
-    playlistOverlay.classList.remove('open');
-  }
-
-  container.querySelector('#btnPlaylist').addEventListener('click', () => {
-    sfxClick();
-    openPlaylist();
-  }, { signal });
-
-  container.querySelector('#playlistClose').addEventListener('click', () => {
-    sfxClick();
-    closePlaylist();
-  }, { signal });
-
-  playlistOverlay.addEventListener('click', () => closePlaylist(), { signal });
-
-  // ── Play state UI ───────────────────────────────────────────────
+  // ── Play state ──────────────────────────────────────────────────
   function updatePlayState(playing) {
     setState({ isPlaying: playing });
     playBtn.textContent = playing ? '⏸' : '▶';
     playBtn.classList.toggle('playing', playing);
+
+    if (spDisc) spDisc.classList.toggle('spinning', playing);
 
     if (playing) {
       startVisualizer();
@@ -252,7 +237,6 @@ export async function renderPlayerPage(container) {
     resizeVisualizer();
   }
 
-  // ── Next index (shuffle-aware) ──────────────────────────────────
   function getNextIndex(direction = 1) {
     const s = getState();
     const len = s.songs.length;
@@ -360,7 +344,7 @@ export async function renderPlayerPage(container) {
   // ── Resize ──────────────────────────────────────────────────────
   window.addEventListener('resize', () => resizeVisualizer(), { signal });
 
-  // ── Back to Welcome ─────────────────────────────────────────────
+  // ── Back ────────────────────────────────────────────────────────
   container.querySelector('#btnRestart').addEventListener('click', () => {
     sfxClick();
     sfxNavigate();
@@ -373,7 +357,7 @@ export async function renderPlayerPage(container) {
     navigate('welcome');
   }, { signal });
 
-  // ── Initial state ───────────────────────────────────────────────
+  // ── Init ────────────────────────────────────────────────────────
   renderPlaylist();
   updateShuffleUI();
   updateRepeatUI();
