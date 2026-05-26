@@ -1,12 +1,11 @@
-// Music Player Page — Deep Sea Submarine Control Station 🔱
+// 🎮 Music Player Page — Neon Arcade Ocean + Fish Catch Game
 
 import { getState, setState, resetQuiz, resetPlayer, loadSongsFromManifest } from '../state.js';
 import { sfxClick, sfxVictory, sfxNavigate } from '../sfx.js';
 import { navigate } from '../router.js';
 import * as audio from '../audio.js';
 import { createVisualizer, startVisualizer, stopVisualizer, resizeVisualizer } from '../components/visualizer.js';
-import { createUnderwaterScene, startSceneAnimation, stopSceneAnimation, destroyUnderwaterScene } from '../components/underwaterScene.js';
-import { createPixelCharacter } from '../components/pixelArt.js';
+import { createFishGame, startFishGame, stopFishGame, destroyFishGame, resetGameScore } from '../components/fishGame.js';
 
 const CONGRATS_MESSAGES = [
   '🧠 Selamat! IQ anda setara Albert Einstein!',
@@ -39,306 +38,189 @@ function getVolumeIcon(vol) {
   return '🔊';
 }
 
-// Generate rivet HTML (decorative metal bolts)
-function rivets(count = 4) {
-  return Array.from({ length: count }, () => '<span class="sub-rivet"></span>').join('');
-}
-
 export async function renderPlayerPage(container) {
   const ac = new AbortController();
   const signal = ac.signal;
 
   sfxVictory();
-
-  // Load songs from manifest before rendering
   await loadSongsFromManifest();
 
   const state = getState();
   const congrats = pickRandom(CONGRATS_MESSAGES);
   const currentSong = state.songs[state.currentSongIndex];
 
-  // ── Build submarine control station ───────────────────────────────
+  // ── Build the new layout ──────────────────────────────────────────
   container.innerHTML = `
-    <div class="player-page underwater-world">
+    <div class="arcade-player">
 
-      <!-- Underwater scene backdrop -->
-      <div class="uw-scene-wrapper" id="uwSceneWrapper"></div>
-
-      <!-- Congrats Banner — Sonar transmission style -->
-      <div class="sub-transmission" id="congratsBanner">
-        <div class="sub-transmission-header">
-          <span class="sub-signal-icon">📡</span>
-          <span class="sub-signal-text">TRANSMISI DITERIMA</span>
-          <button class="sub-dismiss" id="congratsDismiss">✕</button>
-        </div>
-        <div class="sub-transmission-body">
-          <div class="congrats-character" id="congratsCharacter"></div>
-          <p class="sub-transmission-msg">${congrats}</p>
-        </div>
+      <!-- Congrats Toast -->
+      <div class="ap-toast" id="congratsToast">
+        <span class="ap-toast-icon">🏆</span>
+        <span class="ap-toast-msg">${congrats}</span>
+        <button class="ap-toast-close" id="toastClose">✕</button>
       </div>
 
-      <!-- Main Submarine Panel -->
-      <div class="sub-station">
-        <div class="sub-station-header">
-          <div class="sub-rivets-row">${rivets(6)}</div>
-          <h2 class="sub-station-title">🔱 DEEP SEA CONTROL STATION</h2>
-          <div class="sub-rivets-row">${rivets(6)}</div>
-        </div>
+      <!-- Game Area (Fish Catch) -->
+      <div class="ap-game-area" id="gameArea"></div>
 
-        <div class="sub-panels">
+      <!-- Player Bar (Bottom) -->
+      <div class="ap-player-bar">
 
-          <!-- LEFT: Command Panel -->
-          <div class="sub-panel sub-command-panel">
-            <div class="sub-panel-label">
-              <span class="sub-label-dot"></span>
-              PUSAT KOMANDO
-              <span class="sub-label-dot"></span>
-            </div>
+        <!-- Visualizer strip -->
+        <div class="ap-viz-strip" id="vizStrip"></div>
 
-            <!-- Porthole (Album Art) -->
-            <div class="sub-porthole-frame">
-              <div class="sub-porthole-rivets">
-                ${rivets(8)}
-              </div>
-              <div class="sub-porthole" id="albumArt">
-                <span class="sub-porthole-emoji">🎵</span>
-                <div class="sub-porthole-glass"></div>
-                <div class="sub-porthole-bubbles" id="portholebubblesSlot"></div>
-              </div>
-            </div>
-
-            <!-- Sonar Monitor (Song Info) -->
-            <div class="sub-monitor">
-              <div class="sub-monitor-scanline"></div>
-              <div class="sub-monitor-content">
-                <p class="sub-monitor-label">▸ NOW PLAYING</p>
-                <h3 class="sub-monitor-title" id="songTitle">${currentSong.title}</h3>
-                <p class="sub-monitor-artist" id="songArtist">${currentSong.artist}</p>
-              </div>
-              <div class="sub-monitor-blink"></div>
-            </div>
-
-            <!-- Visualizer -->
-            <div id="visualizerSlot"></div>
-
-            <!-- Sonar Progress Bar -->
-            <div class="sub-progress">
-              <div class="sub-progress-label">SONAR SWEEP</div>
-              <div class="sub-progress-track" id="progressBar">
-                <div class="sub-progress-fill" id="progressFill"></div>
-                <div class="sub-progress-ping" id="progressPing"></div>
-              </div>
-              <div class="sub-progress-time">
-                <span id="currentTime">0:00</span>
-                <span class="sub-progress-depth">⚓ DEPTH ⚓</span>
-                <span id="totalTime">0:00</span>
-              </div>
-            </div>
-
-            <!-- Control Buttons -->
-            <div class="sub-controls">
-              <button class="sub-ctrl-btn sub-btn-secondary" id="btnShuffle" title="Acak">
-                <span class="sub-btn-icon">🧭</span>
-                <span class="sub-btn-label">ACAK</span>
-              </button>
-              <button class="sub-ctrl-btn sub-btn-secondary" id="btnPrev" title="Sebelumnya">
-                <span class="sub-btn-icon">⏮</span>
-                <span class="sub-btn-label">PREV</span>
-              </button>
-              <button class="sub-ctrl-btn sub-btn-primary" id="play-btn" title="Putar/Jeda">
-                <span class="sub-btn-icon" id="playIcon">▶</span>
-              </button>
-              <button class="sub-ctrl-btn sub-btn-secondary" id="btnNext" title="Selanjutnya">
-                <span class="sub-btn-icon">⏭</span>
-                <span class="sub-btn-label">NEXT</span>
-              </button>
-              <button class="sub-ctrl-btn sub-btn-secondary" id="btnRepeat" title="Ulangi">
-                <span class="sub-btn-icon">⚓</span>
-                <span class="sub-btn-label">LOOP</span>
-              </button>
-            </div>
-
-            <!-- Depth Gauge Volume -->
-            <div class="sub-depth-gauge">
-              <span class="sub-gauge-label">PRESSURE</span>
-              <div class="sub-gauge-track">
-                <button class="sub-gauge-icon" id="volumeIcon">${getVolumeIcon(state.volume)}</button>
-                <input type="range" class="sub-gauge-slider" id="volumeSlider"
-                       min="0" max="1" step="0.01" value="${state.volume}">
-                <div class="sub-gauge-marks">
-                  <span>MIN</span><span>MAX</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="sub-panel-rivets-bottom">${rivets(4)}</div>
-          </div>
-
-          <!-- RIGHT: Ship's Log (Playlist) -->
-          <div class="sub-panel sub-log-panel">
-            <div class="sub-panel-label">
-              <span class="sub-label-dot"></span>
-              BUKU LOG KAPTEN
-              <span class="sub-label-dot"></span>
-            </div>
-
-            <div class="sub-log-header">
-              <span class="sub-log-icon">📜</span>
-              <span class="sub-log-title">DAFTAR TREK AUDIO</span>
-            </div>
-
-            <div class="sub-log-entries" id="playlistList"></div>
-
-            <!-- Ocean Tips -->
-            <div class="sub-tips">
-              <div class="sub-tip">
-                <span>🐟</span> <span>Klik ikan di laut untuk mengusir!</span>
-              </div>
-              <div class="sub-tip">
-                <span>🪼</span> <span>Ubur-ubur bersinar saat musik keras!</span>
-              </div>
-              <div class="sub-tip">
-                <span>🪸</span> <span>Terumbu karang = equalizer laut!</span>
-              </div>
-            </div>
-
-            <div class="sub-panel-rivets-bottom">${rivets(4)}</div>
+        <!-- Now Playing Info -->
+        <div class="ap-now-playing">
+          <div class="ap-song-info">
+            <div class="ap-song-title" id="songTitle">${currentSong.title}</div>
+            <div class="ap-song-artist" id="songArtist">${currentSong.artist}</div>
           </div>
         </div>
 
-        <div class="sub-station-footer">
-          <div class="sub-rivets-row">${rivets(8)}</div>
+        <!-- Progress Bar -->
+        <div class="ap-progress">
+          <span class="ap-time" id="currentTime">0:00</span>
+          <div class="ap-progress-track" id="progressBar">
+            <div class="ap-progress-fill" id="progressFill"></div>
+            <div class="ap-progress-thumb" id="progressThumb"></div>
+          </div>
+          <span class="ap-time" id="totalTime">0:00</span>
+        </div>
+
+        <!-- Controls -->
+        <div class="ap-controls">
+          <div class="ap-controls-left">
+            <button class="ap-btn" id="btnShuffle" title="Acak">🔀</button>
+            <button class="ap-btn" id="btnPrev" title="Sebelumnya">⏮</button>
+            <button class="ap-btn ap-btn-play" id="playBtn" title="Putar">▶</button>
+            <button class="ap-btn" id="btnNext" title="Selanjutnya">⏭</button>
+            <button class="ap-btn" id="btnRepeat" title="Ulangi">🔁</button>
+          </div>
+
+          <div class="ap-controls-right">
+            <button class="ap-btn" id="volumeIcon">${getVolumeIcon(state.volume)}</button>
+            <input type="range" class="ap-volume-slider" id="volumeSlider"
+                   min="0" max="1" step="0.01" value="${state.volume}">
+            <button class="ap-btn ap-btn-playlist" id="btnPlaylist" title="Playlist">📜</button>
+            <button class="ap-btn ap-btn-back" id="btnRestart" title="Kembali">🏠</button>
+          </div>
         </div>
       </div>
 
-      <!-- Restart Section -->
-      <div class="sub-restart">
-        <p class="sub-restart-text">Mau kembali ke permukaan? 🏊</p>
-        <button class="pixel-btn small" id="btnRestart">⬆ NAIK KE ATAS</button>
+      <!-- Playlist Drawer -->
+      <div class="ap-playlist-drawer" id="playlistDrawer">
+        <div class="ap-playlist-header">
+          <h3>📜 PLAYLIST</h3>
+          <button class="ap-playlist-close" id="playlistClose">✕</button>
+        </div>
+        <div class="ap-playlist-list" id="playlistList"></div>
       </div>
+      <div class="ap-playlist-overlay" id="playlistOverlay"></div>
+
     </div>
   `;
 
-  // ── Cache DOM refs ────────────────────────────────────────────────
-  const albumArt        = container.querySelector('#albumArt');
-  const songTitle       = container.querySelector('#songTitle');
-  const songArtist      = container.querySelector('#songArtist');
-  const progressBar     = container.querySelector('#progressBar');
-  const progressFill    = container.querySelector('#progressFill');
-  const progressPing    = container.querySelector('#progressPing');
-  const currentTimeEl   = container.querySelector('#currentTime');
-  const totalTimeEl     = container.querySelector('#totalTime');
-  const playBtn         = container.querySelector('#play-btn');
-  const playIcon        = container.querySelector('#playIcon');
-  const btnShuffle      = container.querySelector('#btnShuffle');
-  const btnPrev         = container.querySelector('#btnPrev');
-  const btnNext         = container.querySelector('#btnNext');
-  const btnRepeat       = container.querySelector('#btnRepeat');
-  const volumeSlider    = container.querySelector('#volumeSlider');
-  const volumeIcon      = container.querySelector('#volumeIcon');
-  const playlistList    = container.querySelector('#playlistList');
+  // ── Cache DOM refs ──────────────────────────────────────────────
+  const songTitle      = container.querySelector('#songTitle');
+  const songArtist     = container.querySelector('#songArtist');
+  const progressBar    = container.querySelector('#progressBar');
+  const progressFill   = container.querySelector('#progressFill');
+  const progressThumb  = container.querySelector('#progressThumb');
+  const currentTimeEl  = container.querySelector('#currentTime');
+  const totalTimeEl    = container.querySelector('#totalTime');
+  const playBtn        = container.querySelector('#playBtn');
+  const btnShuffle     = container.querySelector('#btnShuffle');
+  const btnPrev        = container.querySelector('#btnPrev');
+  const btnNext        = container.querySelector('#btnNext');
+  const btnRepeat      = container.querySelector('#btnRepeat');
+  const volumeSlider   = container.querySelector('#volumeSlider');
+  const volumeIcon     = container.querySelector('#volumeIcon');
+  const playlistList   = container.querySelector('#playlistList');
+  const playlistDrawer = container.querySelector('#playlistDrawer');
+  const playlistOverlay = container.querySelector('#playlistOverlay');
 
-  // ── Inject underwater scene ───────────────────────────────────────
-  const uwWrapper = container.querySelector('#uwSceneWrapper');
-  if (uwWrapper) uwWrapper.appendChild(createUnderwaterScene());
+  // ── Inject Fish Game ────────────────────────────────────────────
+  const gameArea = container.querySelector('#gameArea');
+  gameArea.appendChild(createFishGame());
+  startFishGame();
 
-  const congratsChar = container.querySelector('#congratsCharacter');
-  if (congratsChar) congratsChar.appendChild(createPixelCharacter('cool'));
+  // ── Inject Visualizer ───────────────────────────────────────────
+  const vizStrip = container.querySelector('#vizStrip');
+  vizStrip.appendChild(createVisualizer());
 
-  const vizSlot = container.querySelector('#visualizerSlot');
-  if (vizSlot) vizSlot.appendChild(createVisualizer());
-
-  // Start scene animation (fish swim even without music)
-  startSceneAnimation();
-
-  // ── Porthole spinning class ───────────────────────────────────────
-  function setPortholeSpin(spinning) {
-    if (spinning) {
-      albumArt.classList.add('spinning');
-    } else {
-      albumArt.classList.remove('spinning');
+  // ── Congrats Toast auto-dismiss ─────────────────────────────────
+  const toast = container.querySelector('#congratsToast');
+  const toastTimer = setTimeout(() => {
+    if (toast) {
+      toast.classList.add('ap-toast-hide');
+      setTimeout(() => toast.style.display = 'none', 400);
     }
-  }
+  }, 5000);
 
-  // ── Porthole bubbles when playing ─────────────────────────────────
-  let bubbleInterval = null;
-  function startPortholeBubbles() {
-    const slot = container.querySelector('#portholebubblesSlot');
-    if (!slot || bubbleInterval) return;
-    bubbleInterval = setInterval(() => {
-      if (signal.aborted) { clearInterval(bubbleInterval); return; }
-      const b = document.createElement('div');
-      b.className = 'sub-ph-bubble';
-      b.style.left = `${20 + Math.random() * 60}%`;
-      b.style.animationDuration = `${1 + Math.random() * 2}s`;
-      const size = 3 + Math.random() * 5;
-      b.style.width = `${size}px`;
-      b.style.height = `${size}px`;
-      slot.appendChild(b);
-      setTimeout(() => b.remove(), 3000);
-    }, 400);
-  }
-  function stopPortholeBubbles() {
-    if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
-  }
-
-  // ── Dismiss congrats ──────────────────────────────────────────────
-  container.querySelector('#congratsDismiss').addEventListener('click', () => {
+  container.querySelector('#toastClose').addEventListener('click', () => {
     sfxClick();
-    const banner = container.querySelector('#congratsBanner');
-    if (banner) {
-      banner.style.opacity = '0';
-      banner.style.transform = 'translateY(-20px) scale(0.95)';
-      setTimeout(() => banner.style.display = 'none', 300);
-    }
+    clearTimeout(toastTimer);
+    toast.classList.add('ap-toast-hide');
+    setTimeout(() => toast.style.display = 'none', 300);
   }, { signal });
 
-  // ── Playlist rendering (Ship's Log style) ─────────────────────────
+  // ── Playlist rendering ──────────────────────────────────────────
   function renderPlaylist() {
     const s = getState();
     playlistList.innerHTML = '';
     s.songs.forEach((song, i) => {
       const isActive = i === s.currentSongIndex;
       const item = document.createElement('div');
-      item.className = `sub-log-entry${isActive ? ' active' : ''}`;
-
-      const eqBars = isActive
-        ? `<span class="sub-log-eq"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>`
-        : '';
-
+      item.className = `ap-playlist-item${isActive ? ' active' : ''}`;
       item.innerHTML = `
-        <span class="sub-log-num">${String(i + 1).padStart(2, '0')}</span>
-        <span class="sub-log-divider">│</span>
-        <span class="sub-log-info">
-          <span class="sub-log-song">${song.title}</span>
-          <span class="sub-log-artist">${song.artist}</span>
-        </span>
-        ${eqBars}
+        <span class="ap-pl-num">${String(i + 1).padStart(2, '0')}</span>
+        <div class="ap-pl-info">
+          <span class="ap-pl-title">${song.title}</span>
+          <span class="ap-pl-artist">${song.artist}</span>
+        </div>
+        ${isActive ? '<span class="ap-pl-eq">♫</span>' : ''}
       `;
-
       item.addEventListener('click', () => {
         sfxClick();
         loadAndPlay(i);
+        closePlaylist();
       }, { signal });
-
       playlistList.appendChild(item);
     });
   }
 
-  // ── Play state UI ─────────────────────────────────────────────────
+  // ── Playlist drawer toggle ──────────────────────────────────────
+  function openPlaylist() {
+    playlistDrawer.classList.add('open');
+    playlistOverlay.classList.add('open');
+  }
+  function closePlaylist() {
+    playlistDrawer.classList.remove('open');
+    playlistOverlay.classList.remove('open');
+  }
+
+  container.querySelector('#btnPlaylist').addEventListener('click', () => {
+    sfxClick();
+    openPlaylist();
+  }, { signal });
+
+  container.querySelector('#playlistClose').addEventListener('click', () => {
+    sfxClick();
+    closePlaylist();
+  }, { signal });
+
+  playlistOverlay.addEventListener('click', () => closePlaylist(), { signal });
+
+  // ── Play state UI ───────────────────────────────────────────────
   function updatePlayState(playing) {
     setState({ isPlaying: playing });
-    playIcon.textContent = playing ? '⏸' : '▶';
+    playBtn.textContent = playing ? '⏸' : '▶';
     playBtn.classList.toggle('playing', playing);
-
-    setPortholeSpin(playing);
 
     if (playing) {
       startVisualizer();
-      startPortholeBubbles();
     } else {
       stopVisualizer();
-      stopPortholeBubbles();
     }
   }
 
@@ -350,7 +232,7 @@ export async function renderPlayerPage(container) {
     btnRepeat.classList.toggle('active', getState().repeat);
   }
 
-  // ── Load & play ───────────────────────────────────────────────────
+  // ── Load & play ─────────────────────────────────────────────────
   function loadAndPlay(index) {
     const s = getState();
     const len = s.songs.length;
@@ -360,8 +242,6 @@ export async function renderPlayerPage(container) {
     const song = s.songs[idx];
     songTitle.textContent = song.title;
     songArtist.textContent = song.artist;
-    albumArt.querySelector('.sub-porthole-emoji').textContent = '🎵';
-    albumArt.classList.remove('error');
 
     audio.loadSong(song.file);
     audio.play().then(() => {
@@ -372,7 +252,7 @@ export async function renderPlayerPage(container) {
     resizeVisualizer();
   }
 
-  // ── Next index (shuffle-aware) ────────────────────────────────────
+  // ── Next index (shuffle-aware) ──────────────────────────────────
   function getNextIndex(direction = 1) {
     const s = getState();
     const len = s.songs.length;
@@ -384,7 +264,7 @@ export async function renderPlayerPage(container) {
     return ((s.currentSongIndex + direction) % len + len) % len;
   }
 
-  // ── Controls ──────────────────────────────────────────────────────
+  // ── Controls ────────────────────────────────────────────────────
   playBtn.addEventListener('click', () => {
     sfxClick();
     audio.togglePlay();
@@ -417,7 +297,7 @@ export async function renderPlayerPage(container) {
     updateRepeatUI();
   }, { signal });
 
-  // ── Volume (Depth Gauge) ──────────────────────────────────────────
+  // ── Volume ──────────────────────────────────────────────────────
   volumeSlider.addEventListener('input', () => {
     const vol = parseFloat(volumeSlider.value);
     audio.setVolume(vol);
@@ -441,7 +321,7 @@ export async function renderPlayerPage(container) {
     }
   }, { signal });
 
-  // ── Progress bar seek ─────────────────────────────────────────────
+  // ── Progress bar seek ───────────────────────────────────────────
   progressBar.addEventListener('click', (e) => {
     const rect = progressBar.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
@@ -449,12 +329,12 @@ export async function renderPlayerPage(container) {
     if (dur) audio.seek(ratio * dur);
   }, { signal });
 
-  // ── Audio events ──────────────────────────────────────────────────
+  // ── Audio events ────────────────────────────────────────────────
   audio.onTimeUpdate((current, duration) => {
     if (signal.aborted) return;
     const pct = duration ? (current / duration) * 100 : 0;
     progressFill.style.width = `${pct}%`;
-    if (progressPing) progressPing.style.left = `${pct}%`;
+    if (progressThumb) progressThumb.style.left = `${pct}%`;
     currentTimeEl.textContent = formatTime(current);
     totalTimeEl.textContent = formatTime(duration);
   });
@@ -472,18 +352,15 @@ export async function renderPlayerPage(container) {
 
   audio.onError(() => {
     if (signal.aborted) return;
-    const emoji = albumArt.querySelector('.sub-porthole-emoji');
-    if (emoji) emoji.textContent = '⚠️';
-    albumArt.classList.add('error');
     songTitle.textContent = 'SIGNAL LOST';
     songArtist.textContent = 'Audio tidak ditemukan';
     updatePlayState(false);
   });
 
-  // ── Resize ────────────────────────────────────────────────────────
+  // ── Resize ──────────────────────────────────────────────────────
   window.addEventListener('resize', () => resizeVisualizer(), { signal });
 
-  // ── Restart ───────────────────────────────────────────────────────
+  // ── Back to Welcome ─────────────────────────────────────────────
   container.querySelector('#btnRestart').addEventListener('click', () => {
     sfxClick();
     sfxNavigate();
@@ -491,13 +368,12 @@ export async function renderPlayerPage(container) {
     resetPlayer();
     audio.pause();
     stopVisualizer();
-    stopPortholeBubbles();
-    destroyUnderwaterScene();
+    destroyFishGame();
     ac.abort();
     navigate('welcome');
   }, { signal });
 
-  // ── Initial state ─────────────────────────────────────────────────
+  // ── Initial state ───────────────────────────────────────────────
   renderPlaylist();
   updateShuffleUI();
   updateRepeatUI();

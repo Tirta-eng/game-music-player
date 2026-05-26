@@ -28,6 +28,13 @@ const state = {
   // Songs playlist (loaded dynamically from manifest)
   songs: DEFAULT_SONGS,
   songsLoaded: false,
+
+  // Fish Catch game state
+  gameScore: 0,
+  highScore: parseInt(localStorage.getItem('fishCatchHighScore') || '0', 10),
+  combo: 0,
+  comboTimer: null,
+  gameActive: true,
 };
 
 // Load songs from auto-generated manifest
