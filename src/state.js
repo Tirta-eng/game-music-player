@@ -3,7 +3,7 @@
 const DEFAULT_SONGS = [
   {
     title: 'Belum Ada Lagu',
-    artist: 'Taruh file MP3 di public/songs/',
+    artist: '—',
     file: '',
     color: '#4FC3F7',
   },

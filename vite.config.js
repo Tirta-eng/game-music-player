@@ -13,7 +13,7 @@ const SONG_COLORS = [
  * Vite plugin: Auto-generate songs manifest from public/songs/ folder.
  *
  * Naming convention for MP3 files:
- *   "Title - Artist.mp3"  →  { title: "Title", artist: "Artist" }
+ *   "Artist - Title.mp3"  →  { title: "Title", artist: "Artist" }
  *   "Title.mp3"           →  { title: "Title", artist: "Unknown Artist" }
  */
 function songsManifestPlugin() {
@@ -35,8 +35,8 @@ function songsManifestPlugin() {
 
       if (nameWithoutExt.includes(' - ')) {
         const parts = nameWithoutExt.split(' - ');
-        title = parts[0].trim();
-        artist = parts.slice(1).join(' - ').trim();
+        artist = parts[0].trim();
+        title = parts.slice(1).join(' - ').trim();
       } else {
         title = nameWithoutExt.trim();
         artist = 'Unknown Artist';

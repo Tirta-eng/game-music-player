@@ -476,7 +476,7 @@ export async function renderPlayerPage(container) {
     if (emoji) emoji.textContent = '⚠️';
     albumArt.classList.add('error');
     songTitle.textContent = 'SIGNAL LOST';
-    songArtist.textContent = 'Taruh file MP3 di public/songs/';
+    songArtist.textContent = 'Audio tidak ditemukan';
     updatePlayState(false);
   });
 
