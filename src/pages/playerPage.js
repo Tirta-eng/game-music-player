@@ -1,6 +1,6 @@
 // Music Player Page — Deep Sea Submarine Control Station 🔱
 
-import { getState, setState, resetQuiz, resetPlayer } from '../state.js';
+import { getState, setState, resetQuiz, resetPlayer, loadSongsFromManifest } from '../state.js';
 import { sfxClick, sfxVictory, sfxNavigate } from '../sfx.js';
 import { navigate } from '../router.js';
 import * as audio from '../audio.js';
@@ -44,11 +44,14 @@ function rivets(count = 4) {
   return Array.from({ length: count }, () => '<span class="sub-rivet"></span>').join('');
 }
 
-export function renderPlayerPage(container) {
+export async function renderPlayerPage(container) {
   const ac = new AbortController();
   const signal = ac.signal;
 
   sfxVictory();
+
+  // Load songs from manifest before rendering
+  await loadSongsFromManifest();
 
   const state = getState();
   const congrats = pickRandom(CONGRATS_MESSAGES);

@@ -25,10 +25,10 @@ export function initRouter(appElement) {
     // Pixel dissolve transition
     appElement.classList.add('page-exit');
 
-    setTimeout(() => {
+    setTimeout(async () => {
       appElement.innerHTML = '';
       currentPage = route;
-      renderFn(appElement);
+      await renderFn(appElement);
       appElement.classList.remove('page-exit');
       appElement.classList.add('page-enter');
 
